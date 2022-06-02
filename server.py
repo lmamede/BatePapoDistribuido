@@ -75,7 +75,7 @@ def atendeRequisicoes(clisock, endr):
 def login(username, endr, porta):
     #TODO: validacao de usuario
     usuarios[username] = {"endereco": endr[0], "porta": porta}
-    print("Novo usuario: ", data["username"])
+    print("Novo usuario: ", username)
 
 def main():
     '''Inicializa e implementa o loop principal (infinito) do servidor'''

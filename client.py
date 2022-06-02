@@ -59,27 +59,27 @@ def main():
     '''Funcao principal do cliente'''
     #inicia o cliente
     sock = iniciaCliente()
-    
-    r,w,x = select.select(inputs, [], [])
-    for request in r:
-        if request == sock: #Caio
-            #outro cliente iniciando conversa
-            #servidor respondendo ou cliente conversando
-            #criar thread
-            pass
-        
-        elif request == sys.stdin:
-            cmd = input()
-            if cmd == 'login': #Alvaro
-                login()
-            elif cmd == 'logoff': #Rodrigo
-                #remove registro do servidor
+    while True:
+        r,w,x = select.select(inputs, [], [])
+        for request in r:
+            if request == sock: #Caio
+                #outro cliente iniciando conversa
+                #servidor respondendo ou cliente conversando
+                #criar thread
                 pass
-            elif cmd == 'get_lista': #Lorena
-                #recupera listagem com usuarios ativos
-                pass
-            else:
-                #envio de mensagem 
-                print(cmd)
+
+            elif request == sys.stdin:
+                cmd = input()
+                if cmd == 'login': #Alvaro
+                    login()
+                elif cmd == 'logoff': #Rodrigo
+                    #remove registro do servidor
+                    pass
+                elif cmd == 'get_lista': #Lorena
+                    #recupera listagem com usuarios ativos
+                    pass
+                else:
+                    #envio de mensagem
+                    print(cmd)
 
 main()
