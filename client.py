@@ -62,7 +62,7 @@ def main():
     
     r,w,x = select.select(inputs, [], [])
     for request in r:
-        if request == sock:
+        if request == sock: #Caio
             #outro cliente iniciando conversa
             #servidor respondendo ou cliente conversando
             #criar thread
@@ -70,12 +70,12 @@ def main():
         
         elif request == sys.stdin:
             cmd = input()
-            if cmd == 'login':
+            if cmd == 'login': #Alvaro
                 login()
-            elif cmd == 'logoff':
+            elif cmd == 'logoff': #Rodrigo
                 #remove registro do servidor
                 pass
-            elif cmd == 'get_lista':
+            elif cmd == 'get_lista': #Lorena
                 #recupera listagem com usuarios ativos
                 pass
             else:
