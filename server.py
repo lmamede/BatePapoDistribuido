@@ -67,7 +67,8 @@ def atendeRequisicoes(clisock, endr):
             login(data["username"], endr, data["porta"])
         elif operacao == 'logoff':
             #remove registro do servidor
-            pass
+            if conexoes[clisock] == endr: #verifica se a reqiosocao de logoff veio do proprio cliente
+                logoff(data["username"])
         elif operacao == 'get_lista':
             #recupera listagem com usuarios ativos
             pass
@@ -76,6 +77,10 @@ def login(username, endr, porta):
     #TODO: validacao de usuario
     usuarios[username] = {"endereco": endr[0], "porta": porta}
     print("Novo usuario: ", username)
+
+def logoff(username):
+    del usuarios[username]
+    print(f'{username} desconectou-se')
 
 def main():
     '''Inicializa e implementa o loop principal (infinito) do servidor'''
