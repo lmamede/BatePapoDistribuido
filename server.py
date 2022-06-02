@@ -5,26 +5,28 @@ import threading
 import json
 
 # define a localizacao do servidor
-HOST = '' # vazio indica que podera receber requisicoes a partir de qq interface de rede da maquina
-PORT = 5000 # porta de acesso
+HOST = ''  # vazio indica que podera receber requisicoes a partir de qq interface de rede da maquina
+PORT = 5000  # porta de acesso
 
-#define a lista de I/O de interesse (jah inclui a entrada padrao)
+# define a lista de I/O de interesse (jah inclui a entrada padrao)
 entradas = [sys.stdin]
-#armazena historico de conexoes 
+# armazena historico de conexoes
 conexoes = {}
 usuarios = {}
+
 
 def iniciaServidor():
     '''Cria um socket de servidor e o coloca em modo de espera por conexoes
     Saida: o socket criado'''
-    # cria o socket 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Internet( IPv4 + TCP) 
+    # cria o socket
+    # Internet( IPv4 + TCP)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # vincula a localizacao do servidor
     sock.bind((HOST, PORT))
 
     # coloca-se em modo de espera por conexoes
-    sock.listen(5) 
+    sock.listen(5)
 
     # configura o socket para o modo nao-bloqueante
     sock.setblocking(False)
@@ -33,6 +35,7 @@ def iniciaServidor():
     entradas.append(sock)
 
     return sock
+
 
 def aceitaConexao(sock):
     '''Aceita o pedido de conexao de um cliente
@@ -43,9 +46,10 @@ def aceitaConexao(sock):
     clisock, endr = sock.accept()
 
     # registra a nova conexao
-    conexoes[clisock] = endr 
+    conexoes[clisock] = endr
 
     return clisock, endr
+
 
 def atendeRequisicoes(clisock, endr):
     '''Recebe mensagens e as envia de volta para o cliente (ate o cliente finalizar)
@@ -53,55 +57,69 @@ def atendeRequisicoes(clisock, endr):
     Saida: '''
 
     while True:
-        #recebe dados do cliente
-        data = clisock.recv(1024) 
-        if not data: # dados vazios: cliente encerrou
+        # recebe dados do cliente
+        data = clisock.recv(1024)
+        if not data:  # dados vazios: cliente encerrou
             print(str(endr) + '-> encerrou')
-            clisock.close() # encerra a conexao com o cliente
-            return 
-        
+            clisock.close()  # encerra a conexao com o cliente
+            return
+
         data = json.loads(data.decode("utf-8"))
         operacao = data["operacao"]
 
         if operacao == 'login':
-            login(data["username"], endr, data["porta"])
+            login(data["username"], endr, data["porta"], clisock)
         elif operacao == 'logoff':
-            #remove registro do servidor
+            # remove registro do servidor
             pass
         elif operacao == 'get_lista':
-            #recupera listagem com usuarios ativos
+            # recupera listagem com usuarios ativos
             pass
 
-def login(username, endr, porta):
-    #TODO: validacao de usuario
-    usuarios[username] = {"endereco": endr[0], "porta": porta}
-    print("Novo usuario: ", username)
+
+def login(username, endr, porta, clisock):
+    # TODO: validacao de usuario
+    if (username in usuarios):
+        mensagem = {"operacao": "login", "status": 400,
+                    "mensagem": "Username em Uso"}
+        mensagemJson = json.dumps(mensagem)
+        clisock.sendall(mensagemJson.encode("utf-8"))
+    else:
+        usuarios[username] = {"endereco": endr[0], "porta": porta}
+        mensagem = {"operacao": "login", "status": 200,
+                    "mensagem": "Login com sucesso"}
+        mensagemJson = json.dumps(mensagem)
+        clisock.sendall(mensagemJson.encode("utf-8"))
+
 
 def main():
     '''Inicializa e implementa o loop principal (infinito) do servidor'''
-    clientes=[] #armazena as threads criadas para fazer join
+    clientes = []  # armazena as threads criadas para fazer join
     sock = iniciaServidor()
     print("Pronto para receber conexoes...")
     while True:
-        #espera por qualquer entrada de interesse
+        # espera por qualquer entrada de interesse
         leitura, escrita, excecao = select.select(entradas, [], [])
-        #tratar todas as entradas prontas
+        # tratar todas as entradas prontas
         for pronto in leitura:
-            if pronto == sock:  #pedido novo de conexao
+            if pronto == sock:  # pedido novo de conexao
                 clisock, endr = aceitaConexao(sock)
-                print ('Conectado com: ', endr)
-                #cria nova thread para atender o cliente
-                cliente = threading.Thread(target=atendeRequisicoes, args=(clisock,endr))
+                print('Conectado com: ', endr)
+                # cria nova thread para atender o cliente
+                cliente = threading.Thread(
+                    target=atendeRequisicoes, args=(clisock, endr))
                 cliente.start()
-                clientes.append(cliente) #armazena a referencia da thread para usar com join()
-            elif pronto == sys.stdin: #entrada padrao
+                # armazena a referencia da thread para usar com join()
+                clientes.append(cliente)
+            elif pronto == sys.stdin:  # entrada padrao
                 cmd = input()
-                if cmd == 'fim': #solicitacao de finalizacao do servidor
-                    for c in clientes: #aguarda todas as threads terminarem
+                if cmd == 'fim':  # solicitacao de finalizacao do servidor
+                    for c in clientes:  # aguarda todas as threads terminarem
                         c.join()
                     sock.close()
                     sys.exit()
-                elif cmd == 'hist': #outro exemplo de comando para o servidor
+                elif cmd == 'hist':  # outro exemplo de comando para o servidor
                     print(str(conexoes.values()))
+
 
 main()
