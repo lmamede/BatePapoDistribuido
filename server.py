@@ -6,7 +6,7 @@ import json
 
 # define a localizacao do servidor
 HOST = ''  # vazio indica que podera receber requisicoes a partir de qq interface de rede da maquina
-PORT = 5000  # porta de acesso
+PORT = 5001  # porta de acesso
 
 # define a lista de I/O de interesse (jah inclui a entrada padrao)
 entradas = [sys.stdin]
@@ -58,13 +58,12 @@ def atendeRequisicoes(clisock, endr):
 
     while True:
         # recebe dados do cliente
-        data = clisock.recv(1024)
+        data = recebeMensagem(clisock)
         if not data:  # dados vazios: cliente encerrou
             print(str(endr) + '-> encerrou')
             clisock.close()  # encerra a conexao com o cliente
             return
 
-        data = json.loads(data.decode("utf-8"))
         operacao = data["operacao"]
 
         if operacao == 'login':
@@ -82,14 +81,26 @@ def login(username, endr, porta, clisock):
     if (username in usuarios):
         mensagem = {"operacao": "login", "status": 400,
                     "mensagem": "Username em Uso"}
-        mensagemJson = json.dumps(mensagem)
-        clisock.sendall(mensagemJson.encode("utf-8"))
+        enviaMensagem(mensagem, clisock)
     else:
         usuarios[username] = {"endereco": endr[0], "porta": porta}
         mensagem = {"operacao": "login", "status": 200,
                     "mensagem": "Login com sucesso"}
-        mensagemJson = json.dumps(mensagem)
-        clisock.sendall(mensagemJson.encode("utf-8"))
+        enviaMensagem(mensagem, clisock)
+
+
+def enviaMensagem(mensagem, sock):
+    mensagemJson = json.dumps(mensagem)
+    tamanho = len(mensagemJson)
+    mensagemComTamanho = str(tamanho) + mensagemJson
+    sock.sendall(mensagemComTamanho.encode("utf-8"))
+
+
+def recebeMensagem(sock):
+    tamanho = int.from_bytes(sock.recv(2), byteorder="big")
+    mensagem = sock.recv(tamanho)
+
+    return json.loads(mensagem.decode("utf-8"))
 
 
 def main():
