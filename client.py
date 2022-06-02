@@ -54,6 +54,20 @@ def login():
     # imprime a mensagem recebida
     #print(str(msg, encoding='utf-8'))
 
+def get_lista():
+    server_sock = connectWithCentralServer()
+
+    mensagem = {"operacao": "get_lista"}
+    mensagem_json = json.dumps(mensagem)
+    server_sock.send(mensagem_json.encode("utf-8"))
+
+    resposta = server_sock.recv(1024)
+    resposta = json.loads(resposta.decode("utf-8"))
+
+    clientes = resposta["clientes"]
+
+    print(clientes)
+
 
 def main():
     '''Funcao principal do cliente'''
@@ -77,6 +91,7 @@ def main():
                 pass
             elif cmd == 'get_lista': #Lorena
                 #recupera listagem com usuarios ativos
+                get_lista()
                 pass
             else:
                 #envio de mensagem 

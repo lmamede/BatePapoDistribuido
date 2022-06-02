@@ -10,7 +10,7 @@ PORT = 5000 # porta de acesso
 
 #define a lista de I/O de interesse (jah inclui a entrada padrao)
 entradas = [sys.stdin]
-#armazena historico de conexoes 
+#armazena historico de conexoes
 conexoes = {}
 usuarios = {}
 
@@ -18,13 +18,13 @@ def iniciaServidor():
     '''Cria um socket de servidor e o coloca em modo de espera por conexoes
     Saida: o socket criado'''
     # cria o socket 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Internet( IPv4 + TCP) 
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Internet( IPv4 + TCP)
 
     # vincula a localizacao do servidor
     sock.bind((HOST, PORT))
 
     # coloca-se em modo de espera por conexoes
-    sock.listen(5) 
+    sock.listen(5)
 
     # configura o socket para o modo nao-bloqueante
     sock.setblocking(False)
@@ -43,7 +43,7 @@ def aceitaConexao(sock):
     clisock, endr = sock.accept()
 
     # registra a nova conexao
-    conexoes[clisock] = endr 
+    conexoes[clisock] = endr
 
     return clisock, endr
 
@@ -54,12 +54,12 @@ def atendeRequisicoes(clisock, endr):
 
     while True:
         #recebe dados do cliente
-        data = clisock.recv(1024) 
+        data = clisock.recv(1024)
         if not data: # dados vazios: cliente encerrou
             print(str(endr) + '-> encerrou')
             clisock.close() # encerra a conexao com o cliente
-            return 
-        
+            return
+
         data = json.loads(data.decode("utf-8"))
         operacao = data["operacao"]
 
@@ -69,13 +69,18 @@ def atendeRequisicoes(clisock, endr):
             #remove registro do servidor
             pass
         elif operacao == 'get_lista':
-            #recupera listagem com usuarios ativos
-            pass
+            #retorn lista com usuarios ativos
+            get_lista(clisock)
 
 def login(username, endr, porta):
     #TODO: validacao de usuario
     usuarios[username] = {"endereco": endr[0], "porta": porta}
-    print("Novo usuario: ", data["username"])
+    print("Novo usuario: ", username)
+
+def get_lista(client_sock):
+    mensagem = {"operacao": "get_lista", "status": "200", "clientes": usuarios}
+    mensagem_json = json.dumps(mensagem)
+    client_sock.send(mensagem_json.encode("utf-8"))
 
 def main():
     '''Inicializa e implementa o loop principal (infinito) do servidor'''
@@ -89,7 +94,7 @@ def main():
         for pronto in leitura:
             if pronto == sock:  #pedido novo de conexao
                 clisock, endr = aceitaConexao(sock)
-                print ('Conectado com: ', endr)
+                print('Conectado com: ', endr)
                 #cria nova thread para atender o cliente
                 cliente = threading.Thread(target=atendeRequisicoes, args=(clisock,endr))
                 cliente.start()
