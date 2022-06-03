@@ -16,6 +16,8 @@ threads = []
 usuarioLogado = ""
 
 
+username = ''
+
 def iniciaCliente():
     '''Cria um socket de servidor para 
     atender as requisicoes de conversa
@@ -73,6 +75,13 @@ def login():
             usuarioLogado = username
             break
 
+def logoff():
+    serverSock = connectWithCentralServer()
+    
+    global username
+    mensagem = {"operacao":"logoff", "username":username}
+    mensagemJson = json.dumps(mensagem)
+    serverSock.send(mensagemJson.encode("utf-8"))
 
 def main():
     '''Funcao principal do cliente'''
@@ -93,7 +102,7 @@ def main():
                     login()
                 elif cmd == 'logoff':  # Rodrigo
                     # remove registro do servidor
-                    pass
+                    logoff()
                 elif cmd == 'get_lista':  # Lorena
                     # recupera listagem com usuarios ativos
                     pass
