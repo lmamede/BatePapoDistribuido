@@ -5,10 +5,10 @@ import select
 import sys
 
 CENTRAL_SERVER = 'localhost'
-CENTRAL_SERVER_PORT = 5000
+CENTRAL_SERVER_PORT = 5001
 
 HOST = ''
-PORT = 5001
+PORT = 5002
 inputs = [sys.stdin]
 
 connections = {}
@@ -63,11 +63,9 @@ def login():
 
         # envia a mensagem do usuario para o servidor
         mensagem = {"operacao": "login", "username": username, "porta": PORT}
-        mensagemJson = json.dumps(mensagem)
-        serverSock.sendall(mensagemJson.encode("utf-8"))
+        enviaMensagem(mensagem, serverSock)
 
-        resposta = serverSock.recv(1024)
-        resposta = json.loads(resposta.decode("utf-8"))
+        resposta = recebeMensagem(serverSock)
 
         print(resposta["mensagem"])
 
@@ -82,6 +80,20 @@ def logoff():
     mensagem = {"operacao":"logoff", "username":username}
     mensagemJson = json.dumps(mensagem)
     serverSock.send(mensagemJson.encode("utf-8"))
+
+def enviaMensagem(mensagem, sock):
+    mensagemJson = json.dumps(mensagem)
+    tamanho = len(mensagemJson)
+    mensagemComTamanho = str(tamanho) + mensagemJson
+    sock.sendall(mensagemComTamanho.encode("utf-8"))
+
+
+def recebeMensagem(sock):
+    tamanho = int.from_bytes(sock.recv(2), byteorder="big")
+    mensagem = sock.recv(tamanho)
+
+    return json.loads(mensagem.decode("utf-8"))
+
 
 def main():
     '''Funcao principal do cliente'''
