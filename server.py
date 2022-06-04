@@ -67,7 +67,8 @@ def atendeRequisicoes(clisock, endr):
             login(data["username"], endr, data["porta"])
         elif operacao == 'logoff':
             #remove registro do servidor
-            pass
+            if conexoes[clisock] == endr: #verifica se a reqiosocao de logoff veio do proprio cliente
+                logoff(data["username"])
         elif operacao == 'get_lista':
             #retorn lista com usuarios ativos
             get_lista(clisock)
@@ -81,6 +82,10 @@ def get_lista(client_sock):
     mensagem = {"operacao": "get_lista", "status": "200", "clientes": usuarios}
     mensagem_json = json.dumps(mensagem)
     client_sock.send(mensagem_json.encode("utf-8"))
+
+def logoff(username):
+    del usuarios[username]
+    print(f'{username} desconectou-se')
 
 def main():
     '''Inicializa e implementa o loop principal (infinito) do servidor'''
