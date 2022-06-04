@@ -10,7 +10,6 @@ PORT = 5001  # porta de acesso
 
 # define a lista de I/O de interesse (jah inclui a entrada padrao)
 entradas = [sys.stdin]
-# armazena historico de conexoes
 conexoes = {}
 usuarios = {}
 
@@ -18,6 +17,7 @@ usuarios = {}
 def iniciaServidor():
     '''Cria um socket de servidor e o coloca em modo de espera por conexoes
     Saida: o socket criado'''
+
     # cria o socket
     # Internet( IPv4 + TCP)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -73,8 +73,8 @@ def atendeRequisicoes(clisock, endr):
             if conexoes[clisock] == endr: # verifica se a reqiosocao de logoff veio do proprio cliente
                 logoff(data["username"])
         elif operacao == 'get_lista':
-            # recupera listagem com usuarios ativos
-            pass
+            #retorn lista com usuarios ativos
+            get_lista(clisock)
 
 
 def login(username, endr, porta, clisock):
@@ -104,6 +104,11 @@ def recebeMensagem(sock):
     return json.loads(mensagem.decode("utf-8"))
 
 
+def get_lista(client_sock):
+    mensagem = {"operacao": "get_lista", "status": "200", "clientes": usuarios}
+    mensagem_json = json.dumps(mensagem)
+    client_sock.send(mensagem_json.encode("utf-8"))
+
 def logoff(username):
     del usuarios[username]
     print(f'{username} desconectou-se')
@@ -121,9 +126,11 @@ def main():
             if pronto == sock:  # pedido novo de conexao
                 clisock, endr = aceitaConexao(sock)
                 print('Conectado com: ', endr)
+
                 # cria nova thread para atender o cliente
                 cliente = threading.Thread(
                     target=atendeRequisicoes, args=(clisock, endr))
+                
                 cliente.start()
                 # armazena a referencia da thread para usar com join()
                 clientes.append(cliente)

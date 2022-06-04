@@ -76,6 +76,20 @@ def login():
             usuarioLogado = username
             break
 
+def get_lista():
+    server_sock = connectWithCentralServer()
+
+    mensagem = {"operacao": "get_lista"}
+    mensagem_json = json.dumps(mensagem)
+    server_sock.send(mensagem_json.encode("utf-8"))
+
+    resposta = server_sock.recv(1024)
+    resposta = json.loads(resposta.decode("utf-8"))
+
+    clientes = resposta["clientes"]
+
+    print(clientes)
+
 def logoff():
     serverSock = connectWithCentralServer()
     
@@ -191,10 +205,10 @@ def main():
                     logoff()
                 elif cmd == 'get_lista':  # Lorena
                     # recupera listagem com usuarios ativos
-                    pass
+                    get_lista()
                 else:
                     # envio de mensagem
                     print(cmd)
-
+                    
             print('flag4')
 main()
