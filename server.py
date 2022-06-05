@@ -6,7 +6,7 @@ import json
 
 # define a localizacao do servidor
 HOST = ''  # vazio indica que podera receber requisicoes a partir de qq interface de rede da maquina
-PORT = 5001  # porta de acesso
+PORT = 5002  # porta de acesso
 
 # define a lista de I/O de interesse (jah inclui a entrada padrao)
 entradas = [sys.stdin]
@@ -52,6 +52,7 @@ def aceitaConexao(sock):
 
 
 def atendeRequisicoes(clisock, endr):
+    print('atendeReq')
     '''Recebe mensagens e as envia de volta para o cliente (ate o cliente finalizar)
     Entrada: socket da conexao e endereco do cliente
     Saida: '''
@@ -59,6 +60,7 @@ def atendeRequisicoes(clisock, endr):
     while True:
         # recebe dados do cliente
         data = recebeMensagem(clisock)
+        print(data)
         if not data:  # dados vazios: cliente encerrou
             print(str(endr) + '-> encerrou')
             clisock.close()  # encerra a conexao com o cliente
@@ -92,16 +94,32 @@ def login(username, endr, porta, clisock):
 
 def enviaMensagem(mensagem, sock):
     mensagemJson = json.dumps(mensagem)
-    tamanho = len(mensagemJson)
-    mensagemComTamanho = str(tamanho) + mensagemJson
-    sock.sendall(mensagemComTamanho.encode("utf-8"))
+    tamanho = len(mensagemJson.encode('utf-8'))
+    tamanho_em_bytes = tamanho.to_bytes(2, byteorder="big")
+    sock.sendall(tamanho_em_bytes)
+    sock.sendall(mensagemJson.encode("utf-8"))
 
+
+# def recebeMensagem(sock):
+#     tamanho = int.from_bytes(sock.recv(2), byteorder="big")
+#     mensagem = sock.recv(tamanho)
+
+#     return json.loads(mensagem.decode("utf-8"))
 
 def recebeMensagem(sock):
+    print('recebeMensagem')
     tamanho = int.from_bytes(sock.recv(2), byteorder="big")
-    mensagem = sock.recv(tamanho)
-
-    return json.loads(mensagem.decode("utf-8"))
+    chunks = []
+    recebidos = 0
+    while recebidos < tamanho:
+        chunk = sock.recv(min(tamanho-recebidos, 2048))
+        if not chunk:
+            pass
+        # retorna erro ou gera exce ̧c~ao
+        chunks.append(chunk)
+        recebidos = recebidos + len(chunk)
+    mensagem = b''.join(chunks)
+    return json.loads(mensagem.decode("utf-8")) if tamanho > 0 else None
 
 
 def get_lista(client_sock):

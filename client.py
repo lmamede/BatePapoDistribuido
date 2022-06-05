@@ -6,10 +6,10 @@ import sys
 import threading
 
 CENTRAL_SERVER = 'localhost'
-CENTRAL_SERVER_PORT = 5001
+CENTRAL_SERVER_PORT = 5002
 
 HOST = ''
-PORT = 5002
+PORT = 5003
 inputs = [sys.stdin]
 
 connections = {}
@@ -102,9 +102,7 @@ def logoff():
 def aceitaConexao(sock):
 
     novoSock, endr = sock.accept() # aceita o pedido de conexão
-    connections[novoSock] = endr # adiciona a nova conexão ao registro de conexões
-    return novoSock, endr
-    '''
+    
     # faz a validação
     # pede a lista de usuários logados no servidor central
     usuarios = get_lista()
@@ -112,13 +110,13 @@ def aceitaConexao(sock):
     for username in usuarios:
         if(usuarios[username]["endereco"] == endr):
             # retorna o novo socket e seu endereço, caso conste na lista de usuários ativos
-            connections[novoSock] = endr
+            connections[novoSock] = endr # adiciona a nova conexão ao registro de conexões
             return novoSock, endr
         else:
             continue
     # caso o endereço não conste na lista retorna um erro
     print(f"Alerta: o endereço {endr} está realizando uma tentativa de bypass no servidor central!!!")
-    '''
+    
 
 # atende a requisição de uma de suas conexões
 def atendeRequisicao(clientSock, endr):
@@ -133,8 +131,7 @@ def atendeRequisicao(clientSock, endr):
             print(str(endr) + ': ' + str(data, encoding='utf-8'))
 
 # faz um pedido de conexão com outro cliente
-def pedeConexao():
-    '''
+def pedeConexao(sock):
     # pede ao servidor a lista de todos os usuários ativos
     usuarios = get_lista()
     # flag de controle para determinar se o usuário escolhido para realizar a conversa é válido ou não
@@ -150,7 +147,7 @@ def pedeConexao():
                 usuarios = get_lista()
                 if(len(usuarios) == 0):
                     print("Nenhum usuário disponível para conversa.")
-                    break;
+                    break
                 else:
                     print(f"Estes são os usuários que estão disponíveis para uma conversa: {str([username for username in usuarios])[1:-1]}.")
                     usuarioEscolhido = input("digite o nome do usuário com quem você deseja conversar: ")
@@ -158,21 +155,34 @@ def pedeConexao():
                 usuarioValido = True
         sock.connect((usuarios[usuarioEscolhido]["endereco"], usuarios[usuarioEscolhido]["porta"]))
         return sock
-    '''
 
 def enviaMensagem(mensagem, sock):
     mensagemJson = json.dumps(mensagem)
-    tamanho = len(mensagemJson)
-    mensagemComTamanho = str(tamanho) + mensagemJson
-    sock.sendall(mensagemComTamanho.encode("utf-8"))
+    tamanho = len(mensagemJson.encode('utf-8'))
+    tamanho_em_bytes = tamanho.to_bytes(2, byteorder="big")
+    sock.sendall(tamanho_em_bytes)
+    sock.sendall(mensagemJson.encode("utf-8"))
 
+
+# def recebeMensagem(sock):
+#     tamanho = int.from_bytes(sock.recv(2), byteorder="big")
+#     mensagem = sock.recv(tamanho)
+
+#     return json.loads(mensagem.decode("utf-8"))
 
 def recebeMensagem(sock):
     tamanho = int.from_bytes(sock.recv(2), byteorder="big")
-    mensagem = sock.recv(tamanho)
-
+    chunks = []
+    recebidos = 0
+    while recebidos < tamanho:
+        chunk = sock.recv(min(tamanho-recebidos, 2048))
+        if not chunk:
+            pass
+        # retorna erro ou gera exce ̧c~ao
+        chunks.append(chunk)
+        recebidos = recebidos + len(chunk)
+    mensagem = b''.join(chunks)
     return json.loads(mensagem.decode("utf-8"))
-
 
 def main():
     '''Funcao principal do cliente'''
@@ -180,13 +190,9 @@ def main():
     sock = iniciaCliente()
     print("Pronto para receber conexoes...")
     while True:
-        print('flag1')
         r, w, x = select.select(inputs, [], [])
-        print('flag2')
         for request in r:
-            print('flag3')
             if request == sock:  # Caio
-                print('chamada sock')
                 # outro cliente iniciando conversa
                 # servidor respondendo ou cliente conversando
                 novoSock, endr = aceitaConexao(sock)
@@ -196,7 +202,6 @@ def main():
                 threads.append(novaConversa)
 
             elif request == sys.stdin:
-                print('chamada stdin')
                 cmd = input()
                 if cmd == 'login':  # Alvaro
                     login()
@@ -210,5 +215,4 @@ def main():
                     # envio de mensagem
                     print(cmd)
                     
-            print('flag4')
 main()
