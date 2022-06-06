@@ -2,7 +2,8 @@ import socket
 import select
 import sys
 import threading
-import json
+
+from conexoes import *
 
 # define a localizacao do servidor
 HOST = ''  # vazio indica que podera receber requisicoes a partir de qq interface de rede da maquina
@@ -36,28 +37,6 @@ def iniciaServidor():
 
     return sock
 
-
-def enviaMensagem(mensagem, sock):
-    mensagemJson = json.dumps(mensagem)
-    tamanho = len(mensagemJson.encode('utf-8'))
-    tamanho_em_bytes = tamanho.to_bytes(2, byteorder="big")
-    sock.sendall(tamanho_em_bytes)
-    sock.sendall(mensagemJson.encode("utf-8"))
-
-def recebeMensagem(sock):
-    print('recebeMensagem')
-    tamanho = int.from_bytes(sock.recv(2), byteorder="big")
-    chunks = []
-    recebidos = 0
-    while recebidos < tamanho:
-        chunk = sock.recv(min(tamanho-recebidos, 2048))
-        if not chunk:
-            pass
-        # retorna erro ou gera exce ̧c~ao
-        chunks.append(chunk)
-        recebidos = recebidos + len(chunk)
-    mensagem = b''.join(chunks)
-    return json.loads(mensagem.decode("utf-8")) if tamanho > 0 else None
 
 def aceitaConexao(sock):
     '''Aceita o pedido de conexao de um cliente
@@ -94,15 +73,15 @@ def atendeRequisicoes(clisock, endr):
             login(data["username"], endr, data["porta"], clisock)
         elif operacao == 'logoff':
             # remove registro do servidor
-            if conexoes[clisock] == endr: # verifica se a reqiosocao de logoff veio do proprio cliente
-                logoff(data["username"])
+            # verifica se a reqiosocao de logoff veio do proprio cliente
+            if conexoes[clisock] == endr:
+                logoff(data["username"], clisock)
         elif operacao == 'get_lista':
-            #retorn lista com usuarios ativos
+            # retorn lista com usuarios ativos
             get_lista(clisock)
 
 
 def login(username, endr, porta, clisock):
-    # TODO: validacao de usuario
     if (username in usuarios):
         mensagem = {"operacao": "login", "status": 400,
                     "mensagem": "Username em Uso"}
@@ -113,15 +92,25 @@ def login(username, endr, porta, clisock):
                     "mensagem": "Login com sucesso"}
         enviaMensagem(mensagem, clisock)
 
+
 def get_lista(client_sock):
     mensagem = {"operacao": "get_lista", "status": "200", "clientes": usuarios}
     enviaMensagem(mensagem, client_sock)
     #mensagem_json = json.dumps(mensagem)
-    #client_sock.send(mensagem_json.encode("utf-8"))
+    # client_sock.send(mensagem_json.encode("utf-8"))
 
-def logoff(username):
-    del usuarios[username]
-    print(f'{username} desconectou-se')
+
+def logoff(username, clisock):
+    if (username not in usuarios):
+        mensagem = {"operacao": "logoff", "status": 400,
+                    "mensagem": "Erro no Logoff"}
+        enviaMensagem(mensagem, clisock)
+    else:
+        del usuarios[username]
+        mensagem = {"operacao": "logoff", "status": 200,
+                    "mensagem": "Logoff com sucesso"}
+        enviaMensagem(mensagem, clisock)
+
 
 def main():
     '''Inicializa e implementa o loop principal (infinito) do servidor'''
@@ -140,7 +129,7 @@ def main():
                 # cria nova thread para atender o cliente
                 cliente = threading.Thread(
                     target=atendeRequisicoes, args=(clisock, endr))
-                
+
                 cliente.start()
                 # armazena a referencia da thread para usar com join()
                 clientes.append(cliente)
