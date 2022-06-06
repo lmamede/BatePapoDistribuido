@@ -1,5 +1,4 @@
 # servidor de echo: lado cliente
-from concurrent.futures import thread
 import socket
 import json
 import select
@@ -11,7 +10,7 @@ CENTRAL_SERVER = 'localhost'
 CENTRAL_SERVER_PORT = 6004
 
 HOST = ''
-#PORT = 5003
+#PORT = 0
 inputs = [sys.stdin]
 
 #THREAD_PORT = PORT
@@ -24,8 +23,10 @@ mutex = threading.Lock()
 
 conversas = {}
 mensagens = {}
+novaMensagem = {}
 
 username = ''
+
 
 def iniciaCliente(porta):
     '''Cria um socket de servidor para 
@@ -43,7 +44,7 @@ def iniciaCliente(porta):
 
     sock.setblocking(False)
 
-    inputs.append(sock)
+    # inputs.append(sock)
 
     return sock
 
@@ -55,13 +56,16 @@ def connectWithCentralServer():
 
     return newSock
 
-# envia uma mensagem, onde os dois primeiros bytes representam o tamanho da mensagem                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+# envia uma mensagem, onde os dois primeiros bytes representam o tamanho da mensagem
+
+
 def enviaMensagem(mensagem, sock):
     mensagemJson = json.dumps(mensagem)
     tamanho = len(mensagemJson.encode('utf-8'))
     tamanho_em_bytes = tamanho.to_bytes(2, byteorder="big")
     sock.sendall(tamanho_em_bytes)
     sock.sendall(mensagemJson.encode("utf-8"))
+
 
 def recebeMensagem(sock):
     tamanho = int.from_bytes(sock.recv(2), byteorder="big")
@@ -78,6 +82,7 @@ def recebeMensagem(sock):
     if(not mensagem):
         return None
     return json.loads(mensagem.decode("utf-8"))
+
 
 def login(porta):
     global usuarioLogado
@@ -96,8 +101,9 @@ def login(porta):
             continue
 
         # envia a mensagem do usuario para o servidor
-        mensagem = {"operacao": "login", "username": username, "porta": int(porta)}
-        
+        mensagem = {"operacao": "login",
+                    "username": username, "porta": int(porta)}
+
         enviaMensagem(mensagem, serverSock)
 
         resposta = recebeMensagem(serverSock)
@@ -107,6 +113,7 @@ def login(porta):
         if (resposta["status"] == 200):
             usuarioLogado = username
             break
+
 
 def get_lista():
     server_sock = connectWithCentralServer()
@@ -123,60 +130,61 @@ def get_lista():
     print(clientes)
     return clientes
 
+
 def logoff():
     serverSock = connectWithCentralServer()
-    
+
     global username
-    mensagem = {"operacao":"logoff", "username":username}
+    mensagem = {"operacao": "logoff", "username": username}
     mensagemJson = json.dumps(mensagem)
     serverSock.send(mensagemJson.encode("utf-8"))
 
 # aceita um pedido de conexão e realiza seu tratamento
+
+
 def aceitaConexao(sock):
 
-    novoSock, endr = sock.accept() # aceita o pedido de conexão
-    connections[novoSock] = endr # adiciona a nova conexão ao registro de conexões
+    novoSock, endr = sock.accept()  # aceita o pedido de conexão
+    # adiciona a nova conexão ao registro de conexões
+    connections[novoSock] = endr
     return novoSock, endr
-    
-    # # faz a validação
-    # # pede a lista de usuários logados no servidor central
-    # usuarios = get_lista()
-    # # percorre os usuários conectados ao servidor central, procurando pelo endereço que está pedindo conexão
-    # for username in usuarios:
-    #     if(usuarios[username]["endereco"] == endr):
-    #         # retorna o novo socket e seu endereço, caso conste na lista de usuários ativos
-    #         connections[novoSock] = endr # adiciona a nova conexão ao registro de conexões
-    #         return novoSock, endr
-    #     else:
-    #         continue
-    # # caso o endereço não conste na lista retorna um erro
-    # print(f"Alerta: o endereço {endr} está realizando uma tentativa de bypass no servidor central!!!")
-    
+
 
 # atende a requisição de uma de suas conexões
-def atendeRequisicao(clientSock, endr):
+def atendeRequisicao(sock):
     print('fui chamadoooooo')
-    # enquanto a conexão estiver ativa
-    while(True):
-        data = recebeMensagem(clientSock)
-        if not data:
-            print(str(endr) + '-> encerrou')
-            clientSock.close()
-            return
-        else:
-            mutex.acquire()
-            if not mensagens.get(data["username"]):
-                mensagens[data["username"]] = []
-            #  exibe mensagem
-            mensagens[data["username"]].append(data)
-            mutex.release()
-            # #msg = input("Digite uma mensagem ('fim' para terminar):")
-            # if msg == 'fim': break 
-            # msg_obj = {"username": usuarioLogado, "mensagem": msg}
-            # # envia a mensagem do usuario para o servidor
-            # #enviaMensagem(msg_obj, clientSock)
+    conexoes = [sock]
+
+    while True:
+        r, w, x = select.select(conexoes, [], [])
+        for request in r:
+            if request == sock:
+                novoSock, _ = aceitaConexao(sock)
+                conexoes.append(novoSock)
+            else:
+                # enquanto a conexão estiver ativa
+                while(True):
+                    data = recebeMensagem(request)
+                    if not data:
+                        print(data['username'], '-> encerrou')
+                        novoSock.close()
+                        return
+                    else:
+                        mutex.acquire()
+                        if not mensagens.get(data["username"]):
+                            mensagens[data["username"]] = []
+                        #  exibe mensagem
+                        mensagens[data["username"]].append(data)
+                        mutex.release()
+                        # #msg = input("Digite uma mensagem ('fim' para terminar):")
+                        # if msg == 'fim': break
+                        # msg_obj = {"username": usuarioLogado, "mensagem": msg}
+                        # # envia a mensagem do usuario para o servidor
+                        # #enviaMensagem(msg_obj, clientSock)
 
 # faz um pedido de conexão com outro cliente
+
+
 def pedeConexao():
     # pede ao servidor a lista de todos os usuários ativos
     usuarios = get_lista()
@@ -188,8 +196,10 @@ def pedeConexao():
         print("Nenhum usuário disponível para conversa.")
         return -1
     else:
-        print(f"Estes são os usuários que estão disponíveis para uma conversa: {str([username for username in usuarios])[1:-1]}.")
-        usuarioEscolhido = input("digite o nome do usuário com quem você deseja conversar: ")
+        print(
+            f"Estes são os usuários que estão disponíveis para uma conversa: {str([username for username in usuarios])[1:-1]}.")
+        usuarioEscolhido = input(
+            "digite o nome do usuário com quem você deseja conversar: ")
         while(usuarioValido == False):
             if(usuarioEscolhido not in usuarios):
                 print("Este usuário não é valido.")
@@ -199,8 +209,10 @@ def pedeConexao():
                     print("Nenhum usuário disponível para conversa.")
                     break
                 else:
-                    print(f"Estes são os usuários que estão disponíveis para uma conversa: {str([username for username in usuarios])[1:-1]}.")
-                    usuarioEscolhido = input("digite o nome do usuário com quem você deseja conversar: ")
+                    print(
+                        f"Estes são os usuários que estão disponíveis para uma conversa: {str([username for username in usuarios])[1:-1]}.")
+                    usuarioEscolhido = input(
+                        "digite o nome do usuário com quem você deseja conversar: ")
             else:
                 usuarioValido = True
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -209,22 +221,26 @@ def pedeConexao():
         # sock.bind((HOST, THREAD_PORT))
         # mutex.release()
         #sock.bind((HOST, THREAD_PORT))
-        sock.connect((usuarios[usuarioEscolhido]["endereco"], usuarios[usuarioEscolhido]["porta"]))
+        sock.connect((usuarios[usuarioEscolhido]["endereco"],
+                      usuarios[usuarioEscolhido]["porta"]))
         iniciaChat(sock, usuarioEscolhido)
-        #return sock
+        # return sock
+
 
 def cls():
-    os.system('cls' if os.name=='nt' else 'clear')
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 
 def iniciaChat(sock, usuario):
-    	
+
     # le as mensagens do usuario ate ele digitar 'fim'
-    while True: 
+    while True:
         cls()
         for mensagem in mensagens.get(usuario, []):
             print(f"{mensagem['username']}: {mensagem['mensagem']}")
         msg = input("Digite uma mensagem ('fim' para terminar):")
-        if msg == 'fim': break 
+        if msg == 'fim':
+            break
 
         msg_obj = {"username": usuarioLogado, "mensagem": msg}
         # envia a mensagem do usuario para o servidor
@@ -235,51 +251,44 @@ def iniciaChat(sock, usuario):
         #  exibe mensagem
         mensagens[usuario].append(msg_obj)
         mutex.release()
-        #espera a resposta do servidor
+        # espera a resposta do servidor
         #msgRecebida = recebeMensagem(sock)
 
         # imprime a mensagem recebida
-        #print(msgRecebida)
+        # print(msgRecebida)
 
     # encerra a conexao
     sock.close()
 
+
 def main():
     '''Funcao principal do cliente'''
     # inicia o cliente
-    porta = input('Digite a porta: ')
+    porta = int(input('Digite a porta: '))
     sock = iniciaCliente(porta)
-    
+
+    novaConversa = threading.Thread(
+        target=atendeRequisicao, args=(sock,))
+    novaConversa.start()
+    threads.append(novaConversa)
+
     print("Pronto para receber conexoes...")
     while True:
-        r, w, x = select.select(inputs, [], [])
-        for request in r:
-            if request == sock:  # Caio
-                print('meu sock ouviu alguma coisa aqui...')
-                # outro cliente iniciando conversa
-                # servidor respondendo ou cliente conversando
-                novoSock, endr = aceitaConexao(sock)
-                # criar thread 
-                novaConversa = threading.Thread(target=atendeRequisicao, args=(novoSock, endr))
-                novaConversa.start()
-                threads.append(novaConversa)
-                #atendeRequisicao(novoSock, endr)
+        cmd = input()
+        if cmd == 'login':  # Alvaro
+            login(porta)
+        elif cmd == 'logoff':  # Rodrigo
+            # remove registro do servidor
+            logoff()
+        elif cmd == 'get_lista':  # Lorena
+            # recupera listagem com usuarios ativos
+            get_lista()
+        elif cmd == 'chat':
+            print('recebi um comando de chat')
+            pedeConexao()
+        else:
+            # envio de mensagem
+            print(cmd)
 
-            elif request == sys.stdin:
-                cmd = input()
-                if cmd == 'login':  # Alvaro
-                    login(porta)
-                elif cmd == 'logoff':  # Rodrigo
-                    # remove registro do servidor
-                    logoff()
-                elif cmd == 'get_lista':  # Lorena
-                    # recupera listagem com usuarios ativos
-                    get_lista()
-                elif cmd == 'chat':
-                    print('recebi um comando de chat')
-                    pedeConexao()
-                else:
-                    # envio de mensagem
-                    print(cmd)
-                    
+
 main()
