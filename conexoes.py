@@ -21,7 +21,7 @@ def iniciaCliente(porta):
 
     sock.listen(5)
 
-    sock.setblocking(False)
+    # sock.setblocking(False)
 
     # inputs.append(sock)
 
