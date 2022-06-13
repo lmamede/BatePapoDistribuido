@@ -14,7 +14,7 @@ def login(porta):
     serverSock = connectWithCentralServer()
 
     while (True):
-        username = input("Escolha um username: ('fim' para terminar):")
+        username = input("Escolha um username: ('fim' para terminar): ")
 
         if (username == ""):
             print("Nome de usuário não pode ser vazio.")
@@ -45,11 +45,6 @@ def get_lista():
 
     resposta = recebeMensagem(server_sock)
     clientes = resposta["clientes"]
-
-    print("\nUsuários ativos no momento, escolha um para conversar: ")
-    usernames = clientes.keys()
-    print('\n'.join('\t{}: {}'.format(*k) for k in enumerate(usernames)))
-    print('\n')
 
     return clientes
 

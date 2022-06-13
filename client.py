@@ -32,14 +32,13 @@ def atendeRequisicao(sock):
     conexoes = [sock]
 
     while True:
+        conexoes = list(filter(lambda x: x.fileno() < 0, conexoes))
         r, w, x = select.select(conexoes, [], [])
         for request in r:
             if request == sock:
                 novoSock, _ = aceitaConexao(sock)
                 conexoes.append(novoSock)
             else:
-                # enquanto a conexão estiver ativa
-
                 mutex.acquire()
                 if(not chatAtivo):
                     mutex.release()
@@ -49,11 +48,9 @@ def atendeRequisicao(sock):
                         break
                     mutex.release()
                     if not data:
-                        print(data['username'], '-> encerrou')
-                        novoSock.close()
-                        return
+                        conexoes.remove(request)
+                        request.close()
                     else:
-
                         mutex.acquire()
                         if not mensagens.get(data["username"]):
                             mensagens[data["username"]] = []
@@ -68,59 +65,51 @@ def atendeRequisicao(sock):
 
 # faz um pedido de conexão com outro cliente
 def pedeConexao(recebeSock):
-    print(f"printando o usuario logado: {usuarioLogado}")
     # verifica se existe um usuário logado no sistema para entrar no chat
     if(usuarioLogado == ""):
         print("Você deve realizar o login para utilizar o chat.")
-    else:
-        # pede ao servidor a lista de todos os usuários ativos
-        usuarios = get_lista()
-        print(usuarioLogado)
-        usuarios.pop(usuarioLogado)
+        return
+    
+    # pede ao servidor a lista de todos os usuários ativos
+    usuarios = get_lista()
 
-        # flag de controle para determinar se o usuário escolhido para realizar a conversa é válido ou não
-        usuarioValido = False
+    # flag de controle para determinar se o usuário escolhido para realizar a conversa é válido ou não
+    usuarioValido = False
+
+    while(usuarioValido == False):
+        usuarios = get_lista()
+        usuarios.pop(usuarioLogado)
 
         if(len(usuarios) == 0):
             print("Nenhum usuário disponível para conversa.")
-            return -1
+            return
+        
+        print("\nUsuários ativos no momento, escolha um para conversar: ")
+        usernames = usuarios.keys()
+        print('\n'.join('\t{}: {}'.format(*k) for k in enumerate(usernames)))
+        print('\n')
+        
+        usuarioEscolhido = input(
+            "digite o nome do usuário com quem você deseja conversar: ")
+
+        if(usuarioEscolhido not in usuarios):
+            print("Este usuário não é valido.")
         else:
-            print(
-                f"Estes são os usuários que estão disponíveis para uma conversa: {str([username for username in usuarios])[1:-1]}.")
+            usuarioValido = True
 
-            usuarioEscolhido = input(
-                "digite o nome do usuário com quem você deseja conversar: ")
+    envioSock = None
 
-            while(usuarioValido == False):
-                if(usuarioEscolhido not in usuarios):
-                    print("Este usuário não é valido.")
-                    usuarios = get_lista()
-                    usuarios.pop(usuarioLogado)
+    if (not conexoesAtivas.get(usuarioEscolhido, None)):
+        envioSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-                    if(len(usuarios) == 0):
-                        print("Nenhum usuário disponível para conversa.")
-                        break
-                    else:
-                        print(
-                            f"Estes são os usuários que estão disponíveis para uma conversa: {str([username for username in usuarios])[1:-1]}.")
-                        usuarioEscolhido = input(
-                            "digite o nome do usuário com quem você deseja conversar: ")
-                else:
-                    usuarioValido = True
+        envioSock.connect((usuarios[usuarioEscolhido]["endereco"],
+                        usuarios[usuarioEscolhido]["porta"]))
+        print("criei nova conexão")
+    else:
+        envioSock = conexoesAtivas.get(usuarioEscolhido)
+        print("já tem uma conexão ativa")
 
-            envioSock = None
-
-            if (not conexoesAtivas.get(usuarioEscolhido, None)):
-                envioSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-                envioSock.connect((usuarios[usuarioEscolhido]["endereco"],
-                                usuarios[usuarioEscolhido]["porta"]))
-                print("criei nova conexão")
-            else:
-                envioSock = conexoesAtivas.get(usuarioEscolhido)
-                print("já tem uma conexão ativa")
-
-            iniciaChat(envioSock, recebeSock, usuarioEscolhido)
+    iniciaChat(envioSock, recebeSock, usuarioEscolhido)
 
 
 def iniciaChat(envioSock, recebeSock, usuario):
@@ -133,6 +122,7 @@ def iniciaChat(envioSock, recebeSock, usuario):
     conexoes = [sys.stdin, recebeSock, envioSock]
 
     while True:
+        cls()
         if(len(notificacoes) > 0):
             while(len(notificacoes) > 0):
                 print(notificacoes.pop(0))
@@ -141,7 +131,7 @@ def iniciaChat(envioSock, recebeSock, usuario):
             for mensagem in mensagens.get(usuario, []):
                 print(f"{mensagem['username']}: {mensagem['mensagem']}")
 
-            print("Digite uma mensagem ('fim' para terminar):")
+            print("Digite uma mensagem ('fim' para terminar): ", sep="")
 
             r, w, x = select.select(conexoes, [], [])
             for request in r:
@@ -170,9 +160,14 @@ def iniciaChat(envioSock, recebeSock, usuario):
                 else:
                     data = recebeMensagem(request)
                     if not data:
-                        print(data['username'], '-> encerrou')
+                        conexoes.remove(request)
                         request.close()
-                        return
+
+                        usuarios = get_lista()
+                        envioSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+                        envioSock.connect((usuarios[usuario]["endereco"], usuarios[usuario]["porta"]))
+                        conexoesAtivas[usuario] = envioSock
                     else:
                         mutex.acquire()
                         if not mensagens.get(data["username"]):
@@ -216,6 +211,9 @@ def main():
                 get_lista()
             elif cmd == 'chat':
                 pedeConexao(sock)
+            elif cmd == 'sair':
+                sock.close()
+                exit(0)
             else:
                 # envio de mensagem
                 print("Comando não encontrado: ", cmd)
