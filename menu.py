@@ -42,14 +42,15 @@ def get_lista():
 
     mensagem = {"operacao": "get_lista"}
     enviaMensagem(mensagem, server_sock)
-    # mensagem_json = json.dumps(mensagem)
-    # server_sock.send(mensagem_json.encode("utf-8"))
 
-    # resposta = server_sock.recv(1024)
-    # resposta = json.loads(resposta.decode("utf-8"))
     resposta = recebeMensagem(server_sock)
     clientes = resposta["clientes"]
-    print(clientes)
+
+    print("\nUsuários ativos no momento, escolha um para conversar: ")
+    usernames = clientes.keys()
+    print('\n'.join('\t{}: {}'.format(*k) for k in enumerate(usernames)))
+    print('\n')
+
     return clientes
 
 
