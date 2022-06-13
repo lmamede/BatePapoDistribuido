@@ -131,7 +131,7 @@ def iniciaChat(envioSock, recebeSock, usuario):
             for mensagem in mensagens.get(usuario, []):
                 print(f"{mensagem['username']}: {mensagem['mensagem']}")
 
-            print("Digite uma mensagem ('fim' para terminar): ", sep="")
+            print("Digite uma mensagem ('fim' para terminar): ")
 
             r, w, x = select.select(conexoes, [], [])
             for request in r:
@@ -145,6 +145,7 @@ def iniciaChat(envioSock, recebeSock, usuario):
                         mutex.acquire()
                         chatAtivo = False
                         mutex.release()
+                        cls()
                         return
 
                     msg_obj = {"username": usuarioLogado, "mensagem": msg}
