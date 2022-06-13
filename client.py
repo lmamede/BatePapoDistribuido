@@ -186,6 +186,10 @@ def iniciaChat(envioSock, recebeSock, usuario):
 def main():
     global usuarioLogado
     '''Funcao principal do cliente'''
+
+    with open('header.txt', 'r') as f:
+        print('\x1b[;32;1m' + f.read() + '\x1b[0m')
+
     # inicia o cliente
     porta = int(input('Digite a porta: '))
     sock = iniciaCliente(porta)

@@ -1,0 +1,12 @@
+
+
+     ccccc            hhhh                 aaaaaaa              tt
+  ccccccccccc         hhhh              aaaa     aaaa         tttt
+ccc         ccc       hhhh              aa        aaaa    tttttttttttt
+ccc                   hhhhhhhhhhh                  aaa        tttt
+ccc                   hhhh     hhhh       aaaaaaaaaaaaa       tttt
+ccc         ccc       hhhh      hhhh    aaa        aaaa       tttt
+  ccccccccccc         hhhh      hhhh    aaa        aaaa       tttt
+    ccccc             hhhh      hhhh      aaaaaaaaaa  aaa       tttt
+
+
