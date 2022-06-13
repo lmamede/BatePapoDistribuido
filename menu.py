@@ -58,7 +58,7 @@ def logoff():
     global usuarioLogado
 
     if (usuarioLogado == ""):
-        print("Você já está logado.")
+        print("Não existe um usuário logado.")
         return
 
     serverSock = connectWithCentralServer()
