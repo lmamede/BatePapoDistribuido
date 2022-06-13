@@ -101,9 +101,10 @@ def pedeConexao(recebeSock):
 
     if (not conexoesAtivas.get(usuarioEscolhido, None)):
         envioSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print(usuarios[usuarioEscolhido])
 
-        envioSock.connect((usuarios[usuarioEscolhido]["endereco"],
-                        usuarios[usuarioEscolhido]["porta"]))
+        envioSock.connect((usuarios[usuarioEscolhido]["Endereco"],
+                        usuarios[usuarioEscolhido]["Porta"]))
         print("criei nova conexão")
     else:
         envioSock = conexoesAtivas.get(usuarioEscolhido)
@@ -209,7 +210,11 @@ def main():
                 usuarioLogado = logoff()
             elif cmd == 'get_lista':
                 # recupera listagem com usuarios ativos
-                get_lista()
+                clientes = get_lista()
+                print("\nUsuários ativos no momento, escolha um para conversar: ")
+                usernames = clientes.keys()
+                print('\n'.join('\t{}: {}'.format(*k) for k in enumerate(usernames)))
+                print('\n')
             elif cmd == 'chat':
                 pedeConexao(sock)
             elif cmd == 'sair':

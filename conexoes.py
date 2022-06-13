@@ -1,8 +1,8 @@
 import socket
 import json
 
-CENTRAL_SERVER = 'localhost'
-CENTRAL_SERVER_PORT = 6004
+CENTRAL_SERVER = '10.11.0.15'
+CENTRAL_SERVER_PORT = 1240
 
 HOST = ''
 
