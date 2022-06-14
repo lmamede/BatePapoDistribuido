@@ -87,7 +87,7 @@ def login(username, endr, porta, clisock):
                     "mensagem": "Username em Uso"}
         enviaMensagem(mensagem, clisock)
     else:
-        usuarios[username] = {"endereco": endr[0], "porta": porta}
+        usuarios[username] = {"Endereco": endr[0], "Porta": porta}
         mensagem = {"operacao": "login", "status": 200,
                     "mensagem": "Login com sucesso"}
         enviaMensagem(mensagem, clisock)
@@ -96,8 +96,6 @@ def login(username, endr, porta, clisock):
 def get_lista(client_sock):
     mensagem = {"operacao": "get_lista", "status": "200", "clientes": usuarios}
     enviaMensagem(mensagem, client_sock)
-    #mensagem_json = json.dumps(mensagem)
-    # client_sock.send(mensagem_json.encode("utf-8"))
 
 
 def logoff(username, clisock):

@@ -1,4 +1,5 @@
 from conexoes import *
+from erros import *
 import os
 
 usuarioLogado = ""
@@ -7,17 +8,15 @@ usuarioLogado = ""
 def login(porta):
     global usuarioLogado
 
-    if (usuarioLogado != ""):
-        print("Você já está logado como:", usuarioLogado)
+    if usuarioJaLogado(usuarioLogado):
         return
 
     serverSock = connectWithCentralServer()
 
     while (True):
-        username = input("Escolha um username: ('fim' para terminar): ")
+        username = input("Escolha um username: ")
 
-        if (username == ""):
-            print("Nome de usuário não pode ser vazio.")
+        if usuarioVazio(username):
             continue
 
         # envia a mensagem do usuario para o servidor
@@ -34,10 +33,11 @@ def login(porta):
             usuarioLogado = username
             break
 
+    serverSock.close()
     return usuarioLogado
 
 
-def get_lista():
+def get_lista(usuarioLogado):
     server_sock = connectWithCentralServer()
 
     mensagem = {"operacao": "get_lista"}
@@ -45,6 +45,7 @@ def get_lista():
 
     resposta = recebeMensagem(server_sock)
     clientes = resposta["clientes"]
+    clientes.pop(usuarioLogado)
 
     return clientes
 

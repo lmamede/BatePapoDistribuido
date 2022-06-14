@@ -1,40 +1,45 @@
 import socket
 import json
+import threading
 
-CENTRAL_SERVER = '10.11.0.15'
-CENTRAL_SERVER_PORT = 1240
+CENTRAL_SERVER = 'localhost'
+CENTRAL_SERVER_PORT = 6004
 
 HOST = ''
 
-
-def iniciaCliente(porta):
-    '''Cria um socket de servidor para 
-    atender as requisicoes de conversa
-    dos outros clientes.
-    Saida: socket criado'''
-
-    # cria socket
-    # Internet (IPv4 + TCP)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    sock.bind((HOST, int(porta)))
-
-    sock.listen(5)
-
-    # sock.setblocking(False)
-
-    # inputs.append(sock)
-
-    return sock
+threads = []
+mutex = threading.Lock()
+conexoes = []
+conexoesAtivas = {}
 
 
-# aceita um pedido de conexão e realiza seu tratamento
-def aceitaConexao(sock):
+def prepararClienteParaEscuta():
+    """Cria um socket de servidor para atender as
+    requisicoes de conversa dos outros clientes.
+    Saida: socket criado"""
 
-    novoSock, endr = sock.accept()  # aceita o pedido de conexão
-    # adiciona a nova conexão ao registro de conexões
-    # connections[novoSock] = endr
-    return novoSock, endr
+    porta = int(input('Digite a sua porta de escuta: '))
+
+    # cria socket com protocolo TCP
+    sock_cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    #vincula a porta selecionada pelo usuario
+    sock_cliente.bind((HOST, int(porta)))
+
+    #numero de conexoes pendentes
+    sock_cliente.listen(5)
+
+    return sock_cliente, porta
+
+
+def aceitarNovaConexao(sock):
+    """Aceita conexao de outro cliente, para iniciar uma conversa"""
+    global conexoes
+
+    sock_outro_cliente, endr = sock.accept()  # aceita o pedido de conexão
+
+    return sock_outro_cliente
+
 
 
 def connectWithCentralServer():
@@ -56,11 +61,11 @@ def enviaMensagem(mensagem, sock):
 
 
 def recebeMensagem(sock):
-    tamanho = int.from_bytes(sock.recv(2), byteorder="big")
+    tamanho_mensagem = int.from_bytes(sock.recv(2), byteorder="big")
     chunks = []
     recebidos = 0
-    while recebidos < tamanho:
-        chunk = sock.recv(min(tamanho-recebidos, 2048))
+    while recebidos < tamanho_mensagem:
+        chunk = sock.recv(min(tamanho_mensagem - recebidos, 2048))
         if not chunk:
             pass
         # retorna erro ou gera exce ̧c~ao
