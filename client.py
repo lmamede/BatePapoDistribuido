@@ -14,7 +14,6 @@ import caixa_entrada
 usuarioLogado = ""
 usuariosAtivos = {}
 conexoesAtivas = {}
-notificacoes = []
 chatAtivo = False
 
 # atende a requisição de uma de suas conexões
@@ -37,17 +36,15 @@ def atendeRequisicao(sock_cliente):
 
 
 def processarMensagem(request):
-    global notificacoes
     data = recebeMensagem(request)
 
     if not data:
         encerrarConversa(request)
         return
 
-    caixa_entrada.registrarMensagem(data["username"], data)
+    caixa_entrada.registrarMensagem(data["username"], data, False)
 
     conexoesAtivas[data["username"]] = request
-    notificacoes.append(f"Você acabou de receber uma mensagem de {data['username']}")
 
 def encerrarConversa(request):
     conexoes.remove(request)
@@ -66,11 +63,13 @@ def mostrarUsuariosAtivos():
     print('\n')
 
 def mostrarConversasAtivas():
+    """Mostra conversas em andamento juntamente com novas mensagens não lidas"""
+
     if len(conexoesAtivas) == 0:
         return
 
-    print("\nUsuários conversando com você no momento ")
-    print('\n'.join('\t{}: {}'.format(*k) for k in enumerate(conexoesAtivas)))
+    print("\nVocê está conversando com: ")
+    print('\n'.join('\t{}: {}'.format(*k) for k in enumerate(caixa_entrada.atualizarNotificacoes(conexoesAtivas))))
     print('\n')
 
 
@@ -134,7 +133,7 @@ def digitarNoChat(msg, envioSock, usuario):
     msg_obj = {"username": usuarioLogado, "mensagem": msg}
     enviaMensagem(msg_obj, envioSock)
     mutex.acquire()
-    caixa_entrada.registrarMensagem(usuario, msg_obj)
+    caixa_entrada.registrarMensagem(usuario, msg_obj, True)
     mutex.release()
 
 
@@ -146,7 +145,6 @@ def iniciaChat(envioSock, recebeSock, destinatario):
     global chatAtivo
     global conexoes
     global conexoesAtivas
-    global notificacoes
 
     cls()
 
@@ -156,50 +154,44 @@ def iniciaChat(envioSock, recebeSock, destinatario):
     mutex.release()
 
     while True:
-        if(len(notificacoes) > 0):
-            while(len(notificacoes) > 0):
-                print(notificacoes.pop(0))
-        else:
-            abrirConversa(destinatario)
+        abrirConversa(destinatario)
 
-            r, w, x = select.select(conexoes, [], [])
-            for request in r:
-                if request == recebeSock:
-                    sock_outro_cliente = aceitarNovaConexao(recebeSock)
-                    conexoes.append(sock_outro_cliente)
+        r, w, x = select.select(conexoes, [], [])
+        for request in r:
+            if request == recebeSock:
+                sock_outro_cliente = aceitarNovaConexao(recebeSock)
+                conexoes.append(sock_outro_cliente)
 
-                elif request == sys.stdin:
-                    msg = input()
+            elif request == sys.stdin:
+                msg = input()
 
-                    if msg == 'fim':
-                        fecharConversa()
-                        return
-                    digitarNoChat(msg, envioSock, destinatario)
+                if msg == 'fim':
+                    fecharConversa()
+                    return
+                digitarNoChat(msg, envioSock, destinatario)
 
+            else:
+                data = recebeMensagem(request)
+                if not data:
+                    mutex.acquire()
+                    conexoes.remove(request)
+                    mutex.release()
+                    request.close()
+
+                    usuarios = get_lista(usuarioLogado)
+                    envioSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+                    envioSock.connect((usuarios[destinatario]["Endereco"], usuarios[destinatario]["Porta"]))
+                    conexoesAtivas[destinatario] = envioSock
                 else:
-                    data = recebeMensagem(request)
-                    if not data:
-                        mutex.acquire()
-                        conexoes.remove(request)
-                        mutex.release()
-                        request.close()
-
-                        usuarios = get_lista(usuarioLogado)
-                        envioSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-                        envioSock.connect((usuarios[destinatario]["Endereco"], usuarios[destinatario]["Porta"]))
-                        conexoesAtivas[destinatario] = envioSock
-                    else:
-                        mutex.acquire()
-                        caixa_entrada.registrarMensagem(data["username"], data)
-                        notificacoes.append(f"Você acabou de receber uma mensagem de {data['username']}")
-                        mutex.release()
+                    mutex.acquire()
+                    caixa_entrada.registrarMensagem(data["username"], data, True)
+                    mutex.release()
 
 
 def main():
     '''Funcao principal do cliente'''
     global usuarioLogado
-    global notificacoes
 
     carregarHeader()
 
@@ -211,10 +203,6 @@ def main():
     threads.append(novaConversa)
 
     while True:
-        if(len(notificacoes) > 0):
-            while(len(notificacoes) > 0):
-                print(notificacoes.pop(0))
-
         cmd = input("Digite um comando: ")
         if cmd == 'login':
             # registra o usuário no servidor
