@@ -1,4 +1,3 @@
-import socket
 import select
 import sys
 import threading
@@ -14,13 +13,33 @@ entradas = [sys.stdin]
 conexoes = {}
 usuarios = {}
 
+#campos json
+OPERACAO = "operacao"
+PORTA_MIN = "porta"
+PORTA_MAI = "Porta"
+ENDERECO_MIN = "endereco"
+ENDERECO_MAI = "Endereco"
+MENSAGEM = "mensagem"
+STATUS = "status"
+USERNAME = "username"
+CLIENTES = "clientes"
+
+#operacoes
+LOGIN = "login"
+LOGOFF = "logoff"
+GET_LISTA = "get_lista"
+
+#mensagens
+LOGIN_SUCESSO = "Login com sucesso"
+LOGIN_INVALIDO = "Username em Uso"
+LOGOFF_SUCESSO = "Logoff com sucesso"
+LOGOFF_ERRO = "Erro no Logoff"
 
 def iniciaServidor():
-    '''Cria um socket de servidor e o coloca em modo de espera por conexoes
-    Saida: o socket criado'''
+    """Cria um socket de servidor e o coloca em modo de espera por conexoes
+    Saida: o socket criado"""
 
-    # cria o socket
-    # Internet( IPv4 + TCP)
+    # cria o socket com protocolo TCP
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # vincula a localizacao do servidor
@@ -39,9 +58,9 @@ def iniciaServidor():
 
 
 def aceitaConexao(sock):
-    '''Aceita o pedido de conexao de um cliente
+    """Aceita o pedido de conexao de um cliente
     Entrada: o socket do servidor
-    Saida: o novo socket da conexao e o endereco do cliente'''
+    Saida: o novo socket da conexao e o endereco do cliente"""
 
     # estabelece conexao com o proximo cliente
     clisock, endr = sock.accept()
@@ -53,10 +72,8 @@ def aceitaConexao(sock):
 
 
 def atendeRequisicoes(clisock, endr):
-    print('atendeReq')
-    '''Recebe mensagens e as envia de volta para o cliente (ate o cliente finalizar)
-    Entrada: socket da conexao e endereco do cliente
-    Saida: '''
+    """Recebe mensagens e as envia de volta para o cliente (ate o cliente finalizar)
+    Entrada: socket da conexao e endereco do cliente"""
 
     while True:
         # recebe dados do cliente
@@ -67,51 +84,54 @@ def atendeRequisicoes(clisock, endr):
             clisock.close()  # encerra a conexao com o cliente
             return
 
-        operacao = data["operacao"]
+        operacao = data[OPERACAO]
 
-        if operacao == 'login':
-            login(data["username"], endr, data["porta"], clisock)
-        elif operacao == 'logoff':
+        if operacao == LOGIN:
+            login(data[USERNAME], endr, data[PORTA_MIN], clisock)
+        elif operacao == LOGOFF:
             # remove registro do servidor
             # verifica se a reqiosocao de logoff veio do proprio cliente
             if conexoes[clisock] == endr:
-                logoff(data["username"], clisock)
-        elif operacao == 'get_lista':
+                logoff(data[USERNAME], clisock)
+        elif operacao == GET_LISTA:
             # retorn lista com usuarios ativos
             get_lista(clisock)
 
 
 def login(username, endr, porta, clisock):
+    """Registra o usuario na lista do servidor"""
     if (username in usuarios):
-        mensagem = {"operacao": "login", "status": 400,
-                    "mensagem": "Username em Uso"}
+        mensagem = {OPERACAO: LOGIN, STATUS: 400,
+                    MENSAGEM: LOGIN_INVALIDO}
         enviaMensagem(mensagem, clisock)
     else:
-        usuarios[username] = {"Endereco": endr[0], "Porta": porta}
-        mensagem = {"operacao": "login", "status": 200,
-                    "mensagem": "Login com sucesso"}
+        usuarios[username] = {ENDERECO_MAI: endr[0], PORTA_MAI: porta}
+        mensagem = {OPERACAO: LOGIN, STATUS: 200,
+                    MENSAGEM: LOGIN_SUCESSO}
         enviaMensagem(mensagem, clisock)
 
 
 def get_lista(client_sock):
-    mensagem = {"operacao": "get_lista", "status": "200", "clientes": usuarios}
+    """Rertorna lista com usuarios ativos"""
+    mensagem = {OPERACAO: GET_LISTA, STATUS: 200, CLIENTES: usuarios}
     enviaMensagem(mensagem, client_sock)
 
 
 def logoff(username, clisock):
+    """Remove usuario da lista de usuairos ativos do servidor"""
     if (username not in usuarios):
-        mensagem = {"operacao": "logoff", "status": 400,
-                    "mensagem": "Erro no Logoff"}
+        mensagem = {OPERACAO: LOGOFF, STATUS: 400,
+                    MENSAGEM: LOGOFF_ERRO}
         enviaMensagem(mensagem, clisock)
     else:
         del usuarios[username]
-        mensagem = {"operacao": "logoff", "status": 200,
-                    "mensagem": "Logoff com sucesso"}
+        mensagem = {OPERACAO: LOGOFF, STATUS: 200,
+                    MENSAGEM: LOGOFF_SUCESSO}
         enviaMensagem(mensagem, clisock)
 
 
 def main():
-    '''Inicializa e implementa o loop principal (infinito) do servidor'''
+    """Inicializa e implementa o loop principal (infinito) do servidor"""
     clientes = []  # armazena as threads criadas para fazer join
     sock = iniciaServidor()
     print("Pronto para receber conexoes...")
@@ -140,6 +160,5 @@ def main():
                     sys.exit()
                 elif cmd == 'hist':  # outro exemplo de comando para o servidor
                     print(str(conexoes.values()))
-
 
 main()
