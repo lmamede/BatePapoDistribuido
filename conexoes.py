@@ -1,21 +1,21 @@
 import socket
 import json
-import threading
+from inputs import *
+
+ENCODE = "utf-8"
 
 CENTRAL_SERVER = 'localhost'
 CENTRAL_SERVER_PORT = 6004
 
 HOST = ''
 
-threads = []
-mutex = threading.Lock()
-
 def prepararClienteParaEscuta():
     """Cria um socket de servidor para atender as
     requisicoes de conversa dos outros clientes.
-    Saida: socket criado"""
 
-    porta = int(input('Digite a sua porta de escuta: '))
+    Saida: socket criado e porta escolhida"""
+
+    porta = int(input(MSG_PORTA))
 
     # cria socket com protocolo TCP
     sock_cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -35,27 +35,31 @@ def aceitarNovaConexao(sock):
 
     return sock_outro_cliente
 
-
-
 def connectWithCentralServer():
+    """Cria um socket de comunicação com o servidor central
+
+    Saida: socket do server"""
     # Internet (IPv4 + TCP)
     newSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     newSock.connect((CENTRAL_SERVER, CENTRAL_SERVER_PORT))
 
     return newSock
 
-# envia uma mensagem, onde os dois primeiros bytes representam o tamanho da mensagem
-
-
 def enviaMensagem(mensagem, sock):
+    """Envia uma mensagem, onde os dois primeiros bytes representam o tamanho da mensagem"""
     mensagemJson = json.dumps(mensagem)
-    tamanho = len(mensagemJson.encode('utf-8'))
+    tamanho = len(mensagemJson.encode(ENCODE))
     tamanho_em_bytes = tamanho.to_bytes(2, byteorder="big")
     sock.sendall(tamanho_em_bytes)
-    sock.sendall(mensagemJson.encode("utf-8"))
+    sock.sendall(mensagemJson.encode(ENCODE))
 
 
 def recebeMensagem(sock):
+    """Recebe qualquer mensagem enviada ou pelo servidor central
+    ou por outro cliente, resgata até atingir o tamnho notificado
+
+    Saida: mensagem completa em formato JSON"""
+
     tamanho_mensagem = int.from_bytes(sock.recv(2), byteorder="big")
     chunks = []
     recebidos = 0
@@ -69,4 +73,4 @@ def recebeMensagem(sock):
     mensagem = b''.join(chunks)
     if(not mensagem):
         return None
-    return json.loads(mensagem.decode("utf-8"))
+    return json.loads(mensagem.decode(ENCODE))
