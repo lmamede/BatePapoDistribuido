@@ -3,9 +3,9 @@ import select
 
 from menu import *
 from conexoes import *
-from estilo import *
 from erros import *
 from inputs import *
+import estilo
 import threading
 import caixa_entrada
 
@@ -151,8 +151,7 @@ def abrirConversa(usuario):
     mutex.acquire()
     print("\n\n")
     mensagens = caixa_entrada.getMensagens()
-    for mensagem in mensagens.get(usuario, []):
-        print(f"{mensagem['username']}: {mensagem['mensagem']}")
+    estilo.carregarMensagens(mensagens, usuario)
     mutex.release()
 
     print(MSG_DIGITAR_MENSAGEM)
@@ -171,6 +170,8 @@ def fecharConversa():
 
     #limpa tela para voltar o menu
     cls()
+    estilo.carregarHeader()
+    mostrarConversasAtivas()
 
 
 def digitarNoChat(msg, envioSock, usuario):
@@ -257,7 +258,7 @@ def main():
     '''Funcao principal do cliente'''
     global usuarioLogado
 
-    carregarHeader()
+    estilo.carregarHeader()
 
     # inicia o cliente para escutar
     sock_cliente, porta = prepararClienteParaEscuta()
