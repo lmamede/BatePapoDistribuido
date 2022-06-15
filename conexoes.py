@@ -9,9 +9,6 @@ HOST = ''
 
 threads = []
 mutex = threading.Lock()
-conexoes = []
-conexoesAtivas = {}
-
 
 def prepararClienteParaEscuta():
     """Cria um socket de servidor para atender as
@@ -34,8 +31,6 @@ def prepararClienteParaEscuta():
 
 def aceitarNovaConexao(sock):
     """Aceita conexao de outro cliente, para iniciar uma conversa"""
-    global conexoes
-
     sock_outro_cliente, endr = sock.accept()  # aceita o pedido de conexão
 
     return sock_outro_cliente

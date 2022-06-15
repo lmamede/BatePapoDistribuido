@@ -15,38 +15,47 @@ usuarioLogado = ""
 usuariosAtivos = {}
 conexoesAtivas = {}
 chatAtivo = False
+conexoes = [sys.stdin]
 
 # atende a requisição de uma de suas conexões
 def atendeRequisicao(sock_cliente):
     global chatAtivo
-    conexoes = [sock_cliente]
+    global conexoes
+
+    mutex.acquire()
+    conexoes.append(sock_cliente)
+    mutex.release()
 
     while True:
         r, w, x = select.select(conexoes, [], [])
         for request in r:
             if request == sock_cliente:
                 sock_outro_cliente = aceitarNovaConexao(sock_cliente)
+                mutex.acquire()
                 conexoes.append(sock_outro_cliente)
+                mutex.release()
+
             elif request != sys.stdin:
                 mutex.acquire()
                 if not chatAtivo: #caso em que o usuario nao abriu nenhuma conversa
-                    processarMensagem(request)
+                    processarMensagem(request, conexoes)
                 mutex.release()
 
 
 
-def processarMensagem(request):
+def processarMensagem(request,conexoes):
+    global conexoesAtivas
+
     data = recebeMensagem(request)
 
     if not data:
-        encerrarConversa(request)
+        encerrarConversa(request,conexoes)
         return
 
     caixa_entrada.registrarMensagem(data["username"], data, False)
-
     conexoesAtivas[data["username"]] = request
 
-def encerrarConversa(request):
+def encerrarConversa(request,conexoes):
     conexoes.remove(request)
     request.close()
 
@@ -143,14 +152,16 @@ def iniciaChat(envioSock, recebeSock, destinatario):
     que o usuário digita fim para voltar ao menu"""
 
     global chatAtivo
-    global conexoes
     global conexoesAtivas
+    global conexoes
 
     cls()
 
     mutex.acquire()
     chatAtivo = True
-    conexoes = [sys.stdin, envioSock, recebeSock]
+    if envioSock not in conexoes:
+        conexoes.append(envioSock)
+    caixa_entrada.removeNotificacao(destinatario)
     mutex.release()
 
     while True:
@@ -160,7 +171,9 @@ def iniciaChat(envioSock, recebeSock, destinatario):
         for request in r:
             if request == recebeSock:
                 sock_outro_cliente = aceitarNovaConexao(recebeSock)
+                mutex.acquire()
                 conexoes.append(sock_outro_cliente)
+                mutex.release()
 
             elif request == sys.stdin:
                 msg = input()
@@ -174,15 +187,15 @@ def iniciaChat(envioSock, recebeSock, destinatario):
                 data = recebeMensagem(request)
                 if not data:
                     mutex.acquire()
-                    conexoes.remove(request)
-                    mutex.release()
-                    request.close()
+                    encerrarConversa(request, conexoes)
+
 
                     usuarios = get_lista(usuarioLogado)
                     envioSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
                     envioSock.connect((usuarios[destinatario]["Endereco"], usuarios[destinatario]["Porta"]))
                     conexoesAtivas[destinatario] = envioSock
+                    mutex.release()
                 else:
                     mutex.acquire()
                     caixa_entrada.registrarMensagem(data["username"], data, True)
